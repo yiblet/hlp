@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/PullRequestInc/go-gpt3 v1.1.11
 	github.com/alexflint/go-arg v1.4.3
+	github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f
 )
 
 require (
