@@ -33,9 +33,10 @@ Answer:
 `, "\\", "`")
 
 type askCmd struct {
-	QuestionWords []string `arg:"positional"`
-	MaxTokens     int      `default:"512"`
-	Temperature   float32  `default:"0.7"`
+	Question    []string `arg:"positional"`
+	MaxTokens   int      `default:"512"`
+	Temperature float32  `default:"0.7"`
+	Engine      string   `default:"text-davinci-003"`
 }
 
 func (args *askCmd) Execute(ctx context.Context) error {
@@ -44,10 +45,15 @@ func (args *askCmd) Execute(ctx context.Context) error {
 		return err
 	}
 
-	client := gpt3.NewClient(config.OpenAIAPIKey, gpt3.WithDefaultEngine(gpt3.TextDavinci003Engine))
+	engine := strings.TrimSpace(args.Engine)
+	if engine == "" {
+		engine = gpt3.TextDavinci003Engine
+	}
+
+	client := gpt3.NewClient(config.OpenAIAPIKey, gpt3.WithDefaultEngine(engine))
 
 	err := client.CompletionStream(ctx, gpt3.CompletionRequest{
-		Prompt:      []string{fmt.Sprintf(template, strings.Join(args.QuestionWords, " "))},
+		Prompt:      []string{fmt.Sprintf(template, strings.Join(args.Question, " "))},
 		MaxTokens:   &args.MaxTokens,
 		Temperature: &args.Temperature,
 		Stop:        []string{"```"},
@@ -161,7 +167,7 @@ func main() {
 	case args.Auth != nil:
 		err = args.Auth.Execute(ctx)
 	default:
-		err = fmt.Errorf("invalid command")
+		err = fmt.Errorf("invalid command: run with --help")
 	}
 
 	if err != nil {
