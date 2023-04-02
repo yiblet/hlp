@@ -50,6 +50,7 @@ func (args *askCmd) Execute(ctx context.Context) error {
 		return err
 	}
 
+	lastMessage := ""
 	err = client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
 		Messages: []gpt3.ChatCompletionRequestMessage{
 			{Role: "system", Content: systemMessage},
@@ -60,10 +61,19 @@ func (args *askCmd) Execute(ctx context.Context) error {
 		Stream:      true,
 		Model:       model,
 	}, func(cr *gpt3.ChatCompletionStreamResponse) {
+		message := cr.Choices[0].Delta.Content
+		if message != "" {
+			lastMessage = message
+		}
 		fmt.Printf("%s", cr.Choices[0].Delta.Content)
 	})
-
-	return err
+	if err != nil {
+		return err
+	}
+	if len(lastMessage) == 0 || lastMessage[len(lastMessage)-1] != '\n' {
+		fmt.Printf("\n")
+	}
+	return nil
 }
 
 type authCmd struct {
