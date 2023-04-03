@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -14,12 +15,15 @@ type authConfig struct {
 	OpenAIAPIKey string `json:"openai_api_key"`
 }
 
-func (c *authConfig) NewClient(options ...gpt3.ClientOption) (gpt3.Client, error) {
+func (c *authConfig) NewClient() (gpt3.Client, error) {
 	if err := c.Read(); err != nil {
 		return nil, err
 	}
 
-	client := gpt3.NewClient(c.OpenAIAPIKey, options...)
+	httpClient := &http.Client{
+		Timeout: 0,
+	}
+	client := gpt3.NewClient(c.OpenAIAPIKey, gpt3.WithHTTPClient(httpClient))
 	return client, nil
 }
 

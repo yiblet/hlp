@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/PullRequestInc/go-gpt3"
 	"github.com/alexflint/go-arg"
@@ -32,7 +33,7 @@ chmod -R 644 /path/to/directory/
 
 type askCmd struct {
 	Question    []string `arg:"positional"`
-	MaxTokens   int      `default:"512"`
+	MaxTokens   int      `default:"0"`
 	Temperature float32  `default:"0.7"`
 	Model       string   `default:"gpt-3.5-turbo"`
 }
@@ -112,7 +113,7 @@ func (c *authCmd) Execute(ctx context.Context) error {
 type chatCmd struct {
 	File        string  `arg:"required,positional" help:"the input chat file, if you pass - the command will read from stdin"`
 	Write       *string `arg:"positional" help:"the output chat file, if you pass - the output will be the same as input"`
-	MaxTokens   int     `default:"1024"`
+	MaxTokens   int     `default:"0"`
 	Temperature float32 `default:"0.7"`
 	Model       string  `default:"gpt-3.5-turbo"`
 	Color       bool    `default:"false"`
@@ -345,6 +346,8 @@ type mainCmd struct {
 func main() {
 	var args mainCmd
 	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
+	defer cancel()
 	arg.MustParse(&args)
 
 	var err error
