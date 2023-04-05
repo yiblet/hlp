@@ -289,6 +289,11 @@ func parseChatFile(file io.Reader) ([]gpt3.ChatCompletionRequestMessage, error) 
 			continue
 		}
 
+		// if there is no role, but there is some sort of content assume 
+		// that it's the user talking.
+		if currentRole == "" && strings.TrimSpace(line) != "" {
+			currentRole = "user"
+		}
 		if currentRole != "" {
 			currentMessage.WriteString(line)
 			currentMessage.WriteString("\n")
