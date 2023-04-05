@@ -271,7 +271,7 @@ func parseChatFile(file io.Reader) ([]gpt3.ChatCompletionRequestMessage, error) 
 	var currentMessage strings.Builder
 
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+		line := scanner.Text()
 
 		if strings.HasPrefix(line, "---") {
 			if currentRole != "" && currentMessage.Len() > 0 {
