@@ -13,6 +13,7 @@ import (
 
 	"github.com/PullRequestInc/go-gpt3"
 	"github.com/alexflint/go-arg"
+	"github.com/yiblet/hlp/parse"
 )
 
 const systemMessage = `
@@ -205,7 +206,7 @@ func (c *chatCmd) Execute(ctx context.Context) error {
 	reader := io.TeeReader(file, &inputContent)
 
 	// Read and parse the file
-	messages, err := parseChatFile(reader)
+	messages, err := parse.ParseChatFile(reader)
 	if err != nil {
 		return err
 	}
@@ -248,75 +249,6 @@ func readAll(reader io.Reader) error {
 	}
 }
 
-// parseChatFile parses a chat file with the following format:
-//
-// --- Role1
-// Content for Role1
-// (additional lines of content for Role1 if necessary)
-// --- Role2
-// Content for Role2
-// (additional lines of content for Role2 if necessary)
-// ---
-//
-// The file should have alternating roles and content, separated by a line containing "---".
-// Each role and its corresponding content must be separated by a newline.
-//
-// valid roles are "system", "assistant", and "user". System can only appear
-// as the first role in the chat log.
-func parseChatFile(file io.Reader) ([]gpt3.ChatCompletionRequestMessage, error) {
-	scanner := bufio.NewScanner(file)
-	messages := []gpt3.ChatCompletionRequestMessage{}
-
-	var currentRole string
-	var currentMessage strings.Builder
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if strings.HasPrefix(line, "---") {
-			if currentRole != "" && currentMessage.Len() > 0 {
-				messages = append(messages, gpt3.ChatCompletionRequestMessage{
-					Role:    currentRole,
-					Content: currentMessage.String(),
-				})
-				currentMessage.Reset()
-			}
-			currentRole = strings.TrimSpace(strings.TrimPrefix(line, "---"))
-
-			if err := validateRole(currentRole); err != nil {
-				return nil, err
-			}
-			continue
-		}
-
-		// if there is no role, but there is some sort of content assume 
-		// that it's the user talking.
-		if currentRole == "" && strings.TrimSpace(line) != "" {
-			currentRole = "user"
-		}
-		if currentRole != "" {
-			currentMessage.WriteString(line)
-			currentMessage.WriteString("\n")
-		}
-	}
-
-	if currentRole != "" && currentMessage.Len() > 0 {
-		messages = append(messages, gpt3.ChatCompletionRequestMessage{
-			Role:    currentRole,
-			Content: currentMessage.String(),
-		})
-	}
-
-	return messages, nil
-}
-
-func validateRole(role string) error {
-	if role != "system" && role != "assistant" && role != "user" {
-		return fmt.Errorf("invalid role: %s", role)
-	}
-	return nil
-}
-
 // appendChatFile appends a new chat response to the specified file.
 // The role parameter must be one of "system", "assistant", or "user".
 // The content parameter should contain the text of the chat response.
@@ -331,7 +263,7 @@ func validateRole(role string) error {
 // The function returns an error if the role is invalid or if there's an issue
 // while opening or writing to the file.
 func appendChatFile(writer io.Writer, role, content string) error {
-	if err := validateRole(role); err != nil {
+	if err := parse.ValidateRole(role); err != nil {
 		return err
 	}
 
