@@ -37,6 +37,21 @@ type askCmd struct {
 	MaxTokens   int      `default:"0"`
 	Temperature float32  `default:"0.7"`
 	Model       string   `default:"gpt-3.5-turbo"`
+	Bash        bool     `arg:"--bash" help:"output only valid bash"`
+}
+
+func (args *askCmd) messages() []gpt3.ChatCompletionRequestMessage {
+	if args.Bash {
+		return []gpt3.ChatCompletionRequestMessage{
+			{Role: "system", Content: systemMessage},
+			{Role: "user", Content: strings.Join(args.Question, " ")},
+		}
+	} else {
+		return []gpt3.ChatCompletionRequestMessage{
+			{Role: "system", Content: strings.Join(args.Question, " ")},
+		}
+	}
+
 }
 
 func (args *askCmd) Execute(ctx context.Context) error {
@@ -54,10 +69,7 @@ func (args *askCmd) Execute(ctx context.Context) error {
 
 	lastMessage := ""
 	err = client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
-		Messages: []gpt3.ChatCompletionRequestMessage{
-			{Role: "system", Content: systemMessage},
-			{Role: "user", Content: strings.Join(args.Question, " ")},
-		},
+		Messages:    args.messages(),
 		MaxTokens:   args.MaxTokens,
 		Temperature: &args.Temperature,
 		Stream:      true,
@@ -296,7 +308,9 @@ func main() {
 	case args.Chat != nil:
 		err = args.Chat.Execute(ctx)
 	default:
-		err = fmt.Errorf("invalid command: run with --help")
+		fmt.Printf("invalid command: run with --help for more info\n")
+		os.Exit(1)
+		return
 	}
 
 	if err != nil {
