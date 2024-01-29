@@ -18,7 +18,6 @@ type chatCmd struct {
 	Write       *string `arg:"positional" help:"the output chat file, if you pass - the output will be the same as input"`
 	MaxTokens   int     `default:"0"`
 	Temperature float32 `default:"0.7"`
-	Model       string  `default:"gpt-3.5-turbo"`
 	Color       bool    `default:"false"`
 }
 
@@ -121,12 +120,9 @@ func (c *chatCmd) readAll(reader io.Reader) error {
 	}
 }
 
-func (c *chatCmd) Execute(ctx context.Context) error {
-	config := authConfig{}
-	client, err := config.NewClient()
-	if err != nil {
-		return err
-	}
+func (c *chatCmd) Execute(ctx context.Context, config *config) error {
+	var err error
+	client := config.Client()
 
 	var file io.ReadCloser
 	if c.File != "-" {
@@ -163,10 +159,11 @@ func (c *chatCmd) Execute(ctx context.Context) error {
 		Stream:      true,
 		MaxTokens:   c.MaxTokens,
 		Temperature: &c.Temperature,
-		Model:       c.Model,
-	}, func(cr *gpt3.ChatCompletionStreamResponse) {
+		Model:       config.Model(),
+	}, func(cr *gpt3.ChatCompletionStreamResponse) error {
 		content := cr.Choices[0].Delta.Content
 		fmt.Fprint(writer, content)
+		return nil
 	})
 
 	if err != nil {

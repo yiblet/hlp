@@ -11,9 +11,30 @@ import (
 )
 
 type mainCmd struct {
-	Ask  *askCmd  `arg:"subcommand"`
-	Auth *authCmd `arg:"subcommand"`
-	Chat *chatCmd `arg:"subcommand"`
+	Ask    *askCmd    `arg:"subcommand"`
+	Config *configCmd `arg:"subcommand"`
+	Chat   *chatCmd   `arg:"subcommand"`
+}
+
+func (args *mainCmd) Execute(ctx context.Context) error {
+	var err error
+	config, err := ReadConfig()
+	if err != nil {
+		return fmt.Errorf("failed fetching configs: %w", err)
+	}
+
+	switch {
+	case args.Ask != nil:
+		err = args.Ask.Execute(ctx, &config)
+	case args.Config != nil:
+		err = args.Config.Execute(ctx, &config)
+	case args.Chat != nil:
+		err = args.Chat.Execute(ctx, &config)
+	default:
+		err = WriteHelp(args, os.Stderr)
+	}
+
+	return err
 }
 
 func main() {
@@ -23,21 +44,7 @@ func main() {
 	defer cancel()
 	arg.MustParse(&args)
 
-	var err error
-	switch {
-	case args.Ask != nil:
-		err = args.Ask.Execute(ctx)
-	case args.Auth != nil:
-		err = args.Auth.Execute(ctx)
-	case args.Chat != nil:
-		err = args.Chat.Execute(ctx)
-	default:
-		fmt.Printf("invalid command: run with --help for more info\n")
-		os.Exit(1)
-		return
-	}
-
-	if err != nil {
+	if err := args.Execute(ctx); err != nil {
 		log.Panic(err)
 	}
 }

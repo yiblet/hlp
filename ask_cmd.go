@@ -28,7 +28,6 @@ type askCmd struct {
 	Question    []string `arg:"positional"`
 	MaxTokens   int      `default:"0"`
 	Temperature float32  `default:"0.7"`
-	Model       string   `default:"gpt-3.5-turbo"`
 	Bash        bool     `arg:"--bash" help:"output only valid bash"`
 }
 
@@ -46,32 +45,24 @@ func (args *askCmd) messages() []gpt3.ChatCompletionRequestMessage {
 
 }
 
-func (args *askCmd) Execute(ctx context.Context) error {
-	config := authConfig{}
-
-	model := strings.TrimSpace(args.Model)
-	if model == "" {
-		model = gpt3.TextDavinci003Engine
-	}
-
-	client, err := config.NewClient()
-	if err != nil {
-		return err
-	}
+func (args *askCmd) Execute(ctx context.Context,config *config  ) error {
+	model := strings.TrimSpace(config.Model())
+	client := config.Client()
 
 	lastMessage := ""
-	err = client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
+	err := client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
 		Messages:    args.messages(),
 		MaxTokens:   args.MaxTokens,
 		Temperature: &args.Temperature,
 		Stream:      true,
 		Model:       model,
-	}, func(cr *gpt3.ChatCompletionStreamResponse) {
+	}, func(cr *gpt3.ChatCompletionStreamResponse) error {
 		message := cr.Choices[0].Delta.Content
 		if message != "" {
 			lastMessage = message
 		}
 		fmt.Printf("%s", cr.Choices[0].Delta.Content)
+			return nil
 	})
 	if err != nil {
 		return err
