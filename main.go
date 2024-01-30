@@ -14,7 +14,6 @@ type mainCmd struct {
 	Ask    *askCmd    `arg:"subcommand"`
 	Config *configCmd `arg:"subcommand"`
 	Chat   *chatCmd   `arg:"subcommand"`
-	Model  string     `arg:"--model,-m" help:"set openai model"`
 }
 
 func (args *mainCmd) SetupConfig() (config, error) {
@@ -23,9 +22,6 @@ func (args *mainCmd) SetupConfig() (config, error) {
 
 	if err != nil {
 		return config{}, fmt.Errorf("failed fetching configs: %w", err)
-	}
-	if args.Model != "" {
-		cfg.OvewriteModel = args.Model
 	}
 	return cfg, nil
 }

@@ -12,15 +12,11 @@ import (
 )
 
 type config struct {
-	OpenAIAPIKey  string `json:"openai_api_key"`
-	DefaultModel  string `json:"model,omitempty"`
-	OvewriteModel string `json:"-"`
+	OpenAIAPIKey string `json:"openai_api_key"`
+	DefaultModel string `json:"model,omitempty"`
 }
 
 func (c *config) Model() string {
-	if c.OvewriteModel != "" {
-		return c.OvewriteModel
-	}
 	if c.DefaultModel == "" {
 		return "gpt-3.5-turbo"
 	}
