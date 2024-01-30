@@ -3,7 +3,18 @@ package main
 import (
 	"io"
 	"os"
+
+	"github.com/alexflint/go-arg"
 )
+
+func writeHelp(config any, output io.Writer) error {
+	parser, err := arg.NewParser(arg.Config{}, config)
+	if err != nil {
+		return err
+	}
+	parser.WriteHelp(output)
+	return nil
+}
 
 func copyFile(src, dst string) error {
 	// Open the source file for reading
