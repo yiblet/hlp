@@ -34,10 +34,10 @@ func (c *configCmd) Execute(ctx context.Context, config *config) error {
 type configSetCmd struct {
 	Model *struct {
 		Model string `arg:"positional"`
-	} `arg:"subcommand"`
+	} `arg:"subcommand:model"`
 	OpenAIAPIKey *struct {
 		OpenAIAPIKey string `arg:"positional"`
-	} `arg:"subcommand"`
+	} `arg:"subcommand:openai_api_key"`
 }
 
 func (c *configSetCmd) Execute(ctx context.Context, config *config) error {
@@ -47,12 +47,8 @@ func (c *configSetCmd) Execute(ctx context.Context, config *config) error {
 	case c.OpenAIAPIKey != nil:
 		return executeSet(ctx, config, openaiKeyValue{}, c.OpenAIAPIKey.OpenAIAPIKey)
 	default:
-		return WriteHelp(c, os.Stderr)
+		return writeHelp(c, os.Stderr)
 	}
-}
-
-type configGenericSet[val configValue] struct {
-	Value string `arg:"positional"`
 }
 
 type configValue interface {
@@ -105,12 +101,19 @@ func executeSet(ctx context.Context, config *config, configVal configValue, valu
 	}
 
 	if value == "" {
-		fmt.Printf("The %s was not passed in via env or command line argument. Enter it in the following line:\n", configVal.name())
+		_, hasEnv := configVal.(interface{ fromEnv() string })
+		if hasEnv {
+			fmt.Printf("The %s was not passed in via env or command line argument. Enter it in the following line:\n", configVal.name())
+		} else {
+			fmt.Printf("The %s was not passed in via command line argument. Enter it in the following line:\n", configVal.name())
+		}
+
 		var key string
 		_, err := fmt.Scanf("%s\n", &key)
 		if err != nil {
 			return err
 		}
+
 		key = strings.TrimSpace(key)
 		if key == "" {
 			return fmt.Errorf("invalid %s", configVal.name())

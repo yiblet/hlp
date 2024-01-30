@@ -31,7 +31,7 @@ func (args *mainCmd) Execute(ctx context.Context) error {
 	case args.Chat != nil:
 		err = args.Chat.Execute(ctx, &config)
 	default:
-		err = WriteHelp(args, os.Stderr)
+		err = writeHelp(args, os.Stderr)
 	}
 
 	return err
