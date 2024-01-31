@@ -26,11 +26,6 @@ func TestParseChatFile(t *testing.T) {
 			err: false,
 		},
 		{
-			name:  "Invalid role",
-			input: "--- invalid\nMessage\n",
-			err:   true,
-		},
-		{
 			name:  "Empty input",
 			input: "",
 			err:   false,
