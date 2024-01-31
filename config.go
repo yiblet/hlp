@@ -16,7 +16,6 @@ type config struct {
 	DefaultModel string `json:"model,omitempty"`
 }
 
-
 func (c *config) Model() string {
 	if c.DefaultModel == "" {
 		return "gpt-3.5-turbo"

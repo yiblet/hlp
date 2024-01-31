@@ -16,11 +16,20 @@ type mainCmd struct {
 	Chat   *chatCmd   `arg:"subcommand"`
 }
 
-func (args *mainCmd) Execute(ctx context.Context) error {
+func (args *mainCmd) SetupConfig() (config, error) {
 	var err error
-	config, err := ReadConfig()
+	cfg, err := ReadConfig()
+
 	if err != nil {
-		return fmt.Errorf("failed fetching configs: %w", err)
+		return config{}, fmt.Errorf("failed fetching configs: %w", err)
+	}
+	return cfg, nil
+}
+
+func (args *mainCmd) Execute(ctx context.Context) error {
+	config, err := args.SetupConfig()
+	if err != nil {
+		return err
 	}
 
 	switch {

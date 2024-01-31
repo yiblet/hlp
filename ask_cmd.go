@@ -29,6 +29,7 @@ type askCmd struct {
 	MaxTokens   int      `default:"0"`
 	Temperature float32  `default:"0.7"`
 	Bash        bool     `arg:"--bash" help:"output only valid bash"`
+	Model       string   `arg:"--model,-m" help:"set openai model"`
 }
 
 func (args *askCmd) messages() []gpt3.ChatCompletionRequestMessage {
@@ -45,8 +46,11 @@ func (args *askCmd) messages() []gpt3.ChatCompletionRequestMessage {
 
 }
 
-func (args *askCmd) Execute(ctx context.Context,config *config  ) error {
-	model := strings.TrimSpace(config.Model())
+func (args *askCmd) Execute(ctx context.Context, config *config) error {
+	model := args.Model
+	if model == "" {
+		model = strings.TrimSpace(config.Model())
+	}
 	client := config.Client()
 
 	lastMessage := ""
@@ -62,7 +66,7 @@ func (args *askCmd) Execute(ctx context.Context,config *config  ) error {
 			lastMessage = message
 		}
 		fmt.Printf("%s", cr.Choices[0].Delta.Content)
-			return nil
+		return nil
 	})
 	if err != nil {
 		return err
