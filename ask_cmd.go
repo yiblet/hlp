@@ -32,7 +32,7 @@ type askCmd struct {
 	Temperature float32  `default:"0.7"`
 	Bash        bool     `arg:"--bash" help:"output only valid bash"`
 	Model       string   `arg:"--model,-m" help:"set openai model"`
-	Attach      []string `arg:"--attach,-a,separate" help:"attach additional files at the end of the message"`
+	Attach      []string `arg:"--attach,-a,separate" help:"attach additional files at the end of the message. pass '-' to pass in stdin"`
 }
 
 func (args *askCmd) buildContent(ctx context.Context) (string, error) {
@@ -51,12 +51,20 @@ func (args *askCmd) buildContent(ctx context.Context) (string, error) {
 
 	for _, a := range args.Attach {
 		sb.WriteRune('\n')
-		file, err := os.Open(a)
-		if err != nil {
-			return "", err
+
+		var file *os.File
+		if a == "-" {
+			file = os.Stdin
+		} else {
+			var err error
+			file, err = os.Open(a)
+			if err != nil {
+				return "", err
+			}
 		}
 		defer file.Close()
-		_, err = io.Copy(&sb, file)
+
+		_, err := io.Copy(&sb, file)
 		if err != nil {
 			return "", err
 		}
