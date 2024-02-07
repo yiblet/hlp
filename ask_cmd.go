@@ -28,8 +28,8 @@ chmod -R 644 /path/to/directory/
 
 type askCmd struct {
 	Question    []string `arg:"positional"`
-	MaxTokens   int      `default:"0"`
-	Temperature float32  `default:"0.7"`
+	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
+	Temperature float32  `arg:"--temp" default:"0.7"`
 	Bash        bool     `arg:"--bash" help:"output only valid bash"`
 	Model       string   `arg:"--model,-m" help:"set openai model"`
 	Attach      []string `arg:"--attach,-a,separate" help:"attach additional files at the end of the message. pass '-' to pass in stdin"`

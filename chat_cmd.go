@@ -16,8 +16,8 @@ import (
 type chatCmd struct {
 	File        string  `arg:"required,positional" help:"the input chat file, if you pass - the command will read from stdin"`
 	Write       *string `arg:"positional" help:"the output chat file, if you pass - the output will be the same as input"`
-	MaxTokens   int     `default:"0"`
-	Temperature float32 `default:"0.7"`
+	MaxTokens   int     `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
+	Temperature float32 `-arg:"--temp" default:"0.7"`
 	Color       bool    `default:"false"`
 	Model       string  `arg:"--model,-m" help:"set openai model"`
 }
