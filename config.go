@@ -61,7 +61,8 @@ func ReadConfig() (config, error) {
 	// A common use case is to get a private config folder for your app to
 	// place its settings files into, that are specific to the local user.
 	configPath := configdir.LocalConfig("hlp")
-	err := configdir.MakePath(configPath) // Ensure it exists.
+
+	err := os.MkdirAll(configPath, 0755) // Ensure it exists.
 	if err != nil {
 		return config{}, fmt.Errorf("cannot read path: %w", err)
 	}
@@ -69,6 +70,9 @@ func ReadConfig() (config, error) {
 	// Deal with a JSON configuration file in that folder.
 	configFile := filepath.Join(configPath, "configuration.json")
 	if _, err = os.Stat(configFile); err != nil {
+		if os.IsNotExist(err) {
+			return config{}, nil
+		}
 		return config{}, err
 	}
 
