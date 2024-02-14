@@ -46,14 +46,22 @@ func (args *mainCmd) Execute(ctx context.Context) error {
 	return err
 }
 
-func main() {
+func run() error {
 	var args mainCmd
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
 	arg.MustParse(&args)
-
 	if err := args.Execute(ctx); err != nil {
-		log.Panic(err)
+		return err
 	}
+	return nil
+}
+
+func main() {
+	if err := run(); err != nil {
+		log.Printf("error: %v", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
 }
