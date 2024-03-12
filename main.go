@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/alexflint/go-arg"
 )
@@ -49,8 +48,6 @@ func (args *mainCmd) Execute(ctx context.Context) error {
 func run() error {
 	var args mainCmd
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, time.Minute*5)
-	defer cancel()
 	arg.MustParse(&args)
 	if err := args.Execute(ctx); err != nil {
 		return err

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"time"
 
 	"github.com/PullRequestInc/go-gpt3"
 )
@@ -143,18 +144,17 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 		var response strings.Builder
 		out := io.MultiWriter(os.Stdout, &response)
 
-		err = client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
+		err = aiStream(ctx, client, aiStreamInput{
 			Messages:    messages,
 			MaxTokens:   args.MaxTokens,
 			Temperature: &args.Temperature,
-			Stream:      true,
 			Model:       model,
-		}, func(cr *gpt3.ChatCompletionStreamResponse) error {
-			message := cr.Choices[0].Delta.Content
+			Timeout:     2 * time.Minute,
+		}, func(message string) error {
 			if message != "" {
 				lastMessage = message
 			}
-			_, err := fmt.Fprintf(out, "%s", cr.Choices[0].Delta.Content)
+			_, err := fmt.Fprintf(out, "%s", message)
 			return err
 		})
 		if err != nil {
@@ -190,7 +190,6 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 			gpt3.ChatCompletionRequestMessage{Role: "assistant", Content: response.String()},
 			gpt3.ChatCompletionRequestMessage{Role: "user", Content: line},
 		)
-
 	}
 	return nil
 }

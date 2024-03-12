@@ -8,8 +8,8 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
-	"github.com/PullRequestInc/go-gpt3"
 	"github.com/yiblet/hlp/parse"
 )
 
@@ -160,18 +160,16 @@ func (args *chatCmd) Execute(ctx context.Context, config *config) error {
 	writer := io.MultiWriter(&outputContent, outputWriter)
 
 	// Call ChatCompletionStream with the parsed messages
-	err = client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
+	err = aiStream(ctx, client, aiStreamInput{
 		Messages:    messages,
-		Stream:      true,
 		MaxTokens:   args.MaxTokens,
 		Temperature: &args.Temperature,
 		Model:       model,
-	}, func(cr *gpt3.ChatCompletionStreamResponse) error {
-		content := cr.Choices[0].Delta.Content
-		fmt.Fprint(writer, content)
+		Timeout:     2 * time.Minute,
+	}, func(message string) error {
+		fmt.Fprint(writer, message)
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
