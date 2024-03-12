@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -178,6 +179,9 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 
 		line, cont, err := args.poll(input)
 		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
+				return terminateSilently(err)
+			}
 			return err
 		}
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -57,6 +58,10 @@ func run() error {
 
 func main() {
 	if err := run(); err != nil {
+		var errtype *terminateSilentlyError
+		if errors.As(err, &errtype) {
+			os.Exit(0)
+		}
 		log.Printf("error: %v", err)
 		os.Exit(1)
 	}
