@@ -15,9 +15,15 @@ type aiStreamInput struct {
 	Timeout     time.Duration
 }
 
+type chatCompletionStreamer interface {
+	// ChatCompletion creates a completion with the Chat completion endpoint which
+	// is what powers the ChatGPT experience.
+	ChatCompletionStream(ctx context.Context, request gpt3.ChatCompletionRequest, onData func(*gpt3.ChatCompletionStreamResponse) error) error
+}
+
 func aiStream(
 	ctx context.Context,
-	client gpt3.Client,
+	streamer chatCompletionStreamer,
 	input aiStreamInput,
 	handler func(message string) error,
 ) error {
@@ -29,7 +35,7 @@ func aiStream(
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	err := client.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
+	err := streamer.ChatCompletionStream(ctx, gpt3.ChatCompletionRequest{
 		Messages:    input.Messages,
 		MaxTokens:   input.MaxTokens,
 		Temperature: input.Temperature,
