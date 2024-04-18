@@ -11,12 +11,15 @@ import (
 
 type configCmd struct {
 	Set *configSetCmd `arg:"subcommand"`
+	Get *configGetCmd `arg:"subcommand"`
 }
 
 func (c *configCmd) Execute(ctx context.Context, config *config) error {
 	switch {
 	case c.Set != nil:
 		return c.Set.Execute(ctx, config)
+	case c.Get != nil:
+		return c.Get.Execute(ctx, config)
 	default:
 		buf := bytes.NewBuffer([]byte{})
 		enc := json.NewEncoder(buf)
@@ -28,6 +31,24 @@ func (c *configCmd) Execute(ctx context.Context, config *config) error {
 
 		fmt.Printf("%s", buf.String())
 		return nil
+	}
+}
+
+type configGetCmd struct {
+	Model *struct {
+	} `arg:"subcommand:model"`
+	OpenAIAPIKey *struct {
+	} `arg:"subcommand:openai_api_key"`
+}
+
+func (c *configGetCmd) Execute(ctx context.Context, config *config) error {
+	switch {
+	case c.Model != nil:
+		return executeGet(config, modelKeyValue{})
+	case c.OpenAIAPIKey != nil:
+		return executeGet(config, openaiKeyValue{})
+	default:
+		return writeHelp(c, os.Stderr)
 	}
 }
 
@@ -43,9 +64,9 @@ type configSetCmd struct {
 func (c *configSetCmd) Execute(ctx context.Context, config *config) error {
 	switch {
 	case c.Model != nil:
-		return executeSet(ctx, config, modelKeyValue{}, c.Model.Model)
+		return executeSet(config, modelKeyValue{}, c.Model.Model)
 	case c.OpenAIAPIKey != nil:
-		return executeSet(ctx, config, openaiKeyValue{}, c.OpenAIAPIKey.OpenAIAPIKey)
+		return executeSet(config, openaiKeyValue{}, c.OpenAIAPIKey.OpenAIAPIKey)
 	default:
 		return writeHelp(c, os.Stderr)
 	}
@@ -92,7 +113,7 @@ func (modelKeyValue) name() string {
 	return "openai model"
 }
 
-func executeSet(ctx context.Context, config *config, configVal configValue, value string) error {
+func executeSet(config *config, configVal configValue, value string) error {
 	if env, ok := configVal.(interface{ fromEnv() string }); value == "" && ok {
 		value = strings.TrimSpace(env.fromEnv())
 		if value != "" {
@@ -132,4 +153,13 @@ func executeSet(ctx context.Context, config *config, configVal configValue, valu
 
 	fmt.Printf("%s stored in cofig\n", configVal.name())
 	return nil
+}
+
+func executeGet(config *config, configVal configValue) error {
+	if value := configVal.get(config); value != "" {
+		fmt.Printf("%s\n", value)
+		return nil
+	}
+
+	return fmt.Errorf("value is empty")
 }
