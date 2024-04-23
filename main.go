@@ -11,14 +11,15 @@ import (
 )
 
 type mainCmd struct {
-	Ask    *askCmd    `arg:"subcommand"`
-	Config *configCmd `arg:"subcommand"`
-	Chat   *chatCmd   `arg:"subcommand"`
+	Ask        *askCmd    `arg:"subcommand"`
+	Config     *configCmd `arg:"subcommand"`
+	Chat       *chatCmd   `arg:"subcommand"`
+	ConfigName string     `arg:"-c,--config" help:"name of the configuration set"`
 }
 
 func (args *mainCmd) SetupConfig() (config, error) {
 	var err error
-	cfg, err := ReadConfig()
+	cfg, err := ReadConfig(args.ConfigName)
 
 	if err != nil {
 		return config{}, fmt.Errorf("failed fetching configs: %w", err)

@@ -11,9 +11,13 @@ import (
 	"github.com/kirsle/configdir"
 )
 
+const defaultConfigFilename = "configuration.json"
+
 type config struct {
-	OpenAIAPIKey string `json:"openai_api_key"`
-	DefaultModel string `json:"model,omitempty"`
+	OpenAIAPIKey      string `json:"openai_api_key"`
+	OpenaiAPIEndpoint string `json:"endpoint,omitempty"`
+	DefaultModel      string `json:"model,omitempty"`
+	fileName          string
 }
 
 func (c *config) Model() string {
@@ -27,25 +31,41 @@ func (c *config) Client() gpt3.Client {
 	httpClient := &http.Client{
 		Timeout: 0,
 	}
-	client := gpt3.NewClient(
-		c.OpenAIAPIKey,
+
+	opts := []gpt3.ClientOption{
 		gpt3.WithHTTPClient(httpClient),
 		gpt3.WithDefaultEngine(c.Model()),
-	)
+	}
+
+	if c.OpenaiAPIEndpoint != "" {
+		opts = append(opts, gpt3.WithBaseURL(c.OpenaiAPIEndpoint))
+	}
+
+	client := gpt3.NewClient(c.OpenAIAPIKey, opts...)
+
 	return client
 }
 
-func WriteConfig(c *config) error {
+func getConfigPath() string {
 	// A common use case is to get a private config folder for your app to
 	// place its settings files into, that are specific to the local user.
-	configPath := configdir.LocalConfig("hlp")
+	return configdir.LocalConfig("hlp")
+}
+
+func (c *config) Write() error {
+	fileName := c.fileName
+	if fileName == "" {
+		fileName = defaultConfigFilename
+	}
+
+	configPath := getConfigPath()
 	err := configdir.MakePath(configPath) // Ensure it exists.
 	if err != nil {
 		return fmt.Errorf("cannot read path: %w", err)
 	}
 
 	// Deal with a JSON configuration file in that folder.
-	configFile := filepath.Join(configPath, "configuration.json")
+	configFile := filepath.Join(configPath, fileName)
 	fh, err := os.Create(configFile)
 	if err != nil {
 		panic(err)
@@ -56,22 +76,27 @@ func WriteConfig(c *config) error {
 	return encoder.Encode(c)
 }
 
-func ReadConfig() (config, error) {
+func ReadConfig(fileName string) (config, error) {
+	if fileName == "" {
+		fileName = defaultConfigFilename
+	}
+
 	c := config{}
 	// A common use case is to get a private config folder for your app to
 	// place its settings files into, that are specific to the local user.
-	configPath := configdir.LocalConfig("hlp")
-
+	configPath := getConfigPath()
 	err := os.MkdirAll(configPath, 0755) // Ensure it exists.
 	if err != nil {
 		return config{}, fmt.Errorf("cannot read path: %w", err)
 	}
 
 	// Deal with a JSON configuration file in that folder.
-	configFile := filepath.Join(configPath, "configuration.json")
+	configFile := filepath.Join(configPath, fileName)
 	if _, err = os.Stat(configFile); err != nil {
 		if os.IsNotExist(err) {
-			return config{}, nil
+			return config{
+				fileName: fileName,
+			}, nil
 		}
 		return config{}, err
 	}
@@ -87,5 +112,7 @@ func ReadConfig() (config, error) {
 	if err := decoder.Decode(&c); err != nil {
 		return config{}, err
 	}
+
+	c.fileName = fileName
 	return c, nil
 }
