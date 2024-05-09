@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/PullRequestInc/go-gpt3"
 	"github.com/kirsle/configdir"
@@ -77,6 +78,7 @@ func (c *config) Write() error {
 }
 
 func ReadConfig(fileName string) (config, error) {
+	fileName = strings.TrimSpace(fileName)
 	if fileName == "" {
 		fileName = defaultConfigFilename
 	}

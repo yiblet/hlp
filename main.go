@@ -14,7 +14,7 @@ type mainCmd struct {
 	Ask        *askCmd    `arg:"subcommand"`
 	Config     *configCmd `arg:"subcommand"`
 	Chat       *chatCmd   `arg:"subcommand"`
-	ConfigName string     `arg:"-c,--config" help:"name of the configuration set"`
+	ConfigName string     `arg:"-c,--config,env:HLP_CONFIG" help:"name of the configuration set"`
 }
 
 func (args *mainCmd) SetupConfig() (config, error) {
