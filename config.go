@@ -23,7 +23,7 @@ type config struct {
 
 func (c *config) Model() string {
 	if c.DefaultModel == "" {
-		return "gpt-3.5-turbo"
+		return "gpt-4o-mini"
 	}
 	return c.DefaultModel
 }
