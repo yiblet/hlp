@@ -10,7 +10,7 @@ import (
 	"github.com/PullRequestInc/go-gpt3"
 )
 
-var boundaryRegexp = regexp.MustCompile(`^---\s+(user|system|assistant)\s*$`)
+var boundaryRegexp = regexp.MustCompile(`^---\s*(user|system|assistant)\s*$`)
 
 // ParseChatFile parses a chat file with the following format:
 //
