@@ -26,6 +26,14 @@ func TestParseChatFile(t *testing.T) {
 			err: false,
 		},
 		{
+			name:  "Valid chat",
+			input: "--- user\nUser message\n",
+			expected: []gpt3.ChatCompletionRequestMessage{
+				{Role: "user", Content: "User message\n"},
+			},
+			err: false,
+		},
+		{
 			name:  "Empty input",
 			input: "",
 			err:   false,
