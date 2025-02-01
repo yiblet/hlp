@@ -33,7 +33,7 @@ chmod -R 644 /path/to/directory/
 type askCmd struct {
 	Question    []string `arg:"positional"`
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
-	Temperature float32  `arg:"--temp" default:"0.7"`
+	Temperature *float32 `arg:"--temp"`
 	Bash        bool     `arg:"--bash" help:"output only valid bash"`
 	Model       string   `arg:"--model,-m" help:"set openai model"`
 	Attach      []string `arg:"--attach,-a,separate" help:"attach additional files at the end of the message. pass '-' to pass in stdin"`
@@ -148,7 +148,7 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 		err = aiStream(ctx, client, aiStreamInput{
 			Messages:    messages,
 			MaxTokens:   args.MaxTokens,
-			Temperature: &args.Temperature,
+			Temperature: args.Temperature,
 			Model:       model,
 			Timeout:     2 * time.Minute,
 		}, func(message string) error {

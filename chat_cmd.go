@@ -14,12 +14,12 @@ import (
 )
 
 type chatCmd struct {
-	File        string  `arg:"required,positional" help:"the input chat file, if you pass - the command will read from stdin"`
-	Write       *string `arg:"positional" help:"the output chat file, if you pass - the output will be the same as input"`
-	MaxTokens   int     `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
-	Temperature float32 `-arg:"--temp" default:"0.7"`
-	Color       bool    `default:"false"`
-	Model       string  `arg:"--model,-m" help:"set openai model"`
+	File        string   `arg:"required,positional" help:"the input chat file, if you pass - the command will read from stdin"`
+	Write       *string  `arg:"positional" help:"the output chat file, if you pass - the output will be the same as input"`
+	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
+	Temperature *float32 `-arg:"--temp"`
+	Color       bool     `default:"false"`
+	Model       string   `arg:"--model,-m" help:"set openai model"`
 }
 
 // appendChatFile appends a new chat response to the specified file.
@@ -163,7 +163,7 @@ func (args *chatCmd) Execute(ctx context.Context, config *config) error {
 	err = aiStream(ctx, client, aiStreamInput{
 		Messages:    messages,
 		MaxTokens:   args.MaxTokens,
-		Temperature: &args.Temperature,
+		Temperature: args.Temperature,
 		Model:       model,
 		Timeout:     2 * time.Minute,
 	}, func(message string) error {
