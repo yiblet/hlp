@@ -195,5 +195,6 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 			gpt3.ChatCompletionRequestMessage{Role: "user", Content: line},
 		)
 	}
+
 	return nil
 }
