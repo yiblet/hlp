@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/PullRequestInc/go-gpt3"
+	"github.com/yiblet/hlp/chat"
 )
 
 var boundaryRegexp = regexp.MustCompile(`^---\s*(user|system|assistant)\s*$`)
@@ -27,9 +27,9 @@ var boundaryRegexp = regexp.MustCompile(`^---\s*(user|system|assistant)\s*$`)
 //
 // valid roles are "system", "assistant", and "user". System can only appear
 // as the first role in the chat log.
-func ParseChatFile(file io.Reader) ([]gpt3.ChatCompletionRequestMessage, error) {
+func ParseChatFile(file io.Reader) ([]chat.Message, error) {
 	scanner := bufio.NewScanner(file)
-	messages := []gpt3.ChatCompletionRequestMessage{}
+	messages := []chat.Message{}
 
 	var currentRole string
 	var currentMessage strings.Builder
@@ -39,7 +39,7 @@ func ParseChatFile(file io.Reader) ([]gpt3.ChatCompletionRequestMessage, error) 
 
 		if matches := boundaryRegexp.FindStringSubmatch(strings.ToLower(line)); matches != nil {
 			if currentRole != "" && currentMessage.Len() > 0 {
-				messages = append(messages, gpt3.ChatCompletionRequestMessage{
+				messages = append(messages, chat.Message{
 					Role:    currentRole,
 					Content: currentMessage.String(),
 				})
@@ -64,7 +64,7 @@ func ParseChatFile(file io.Reader) ([]gpt3.ChatCompletionRequestMessage, error) 
 	}
 
 	if currentRole != "" && currentMessage.Len() > 0 {
-		messages = append(messages, gpt3.ChatCompletionRequestMessage{
+		messages = append(messages, chat.Message{
 			Role:    currentRole,
 			Content: currentMessage.String(),
 		})

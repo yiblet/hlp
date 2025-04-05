@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/yiblet/hlp/chat"
 	"github.com/yiblet/hlp/parse"
 )
 
@@ -92,10 +93,6 @@ func (args *chatCmd) write(
 	}
 
 	defer file.Close()
-	if err != nil {
-		return err
-	}
-
 	return args.writeTo(input, content, file)
 }
 
@@ -159,13 +156,14 @@ func (args *chatCmd) Execute(ctx context.Context, config *config) error {
 
 	writer := io.MultiWriter(&outputContent, outputWriter)
 
+	ctx, cancel := context.WithTimeout(ctx, time.Minute*2)
+	defer cancel()
 	// Call ChatCompletionStream with the parsed messages
-	err = aiStream(ctx, client, aiStreamInput{
+	err = client.ChatStream(ctx, chat.Input{
 		Messages:    messages,
 		MaxTokens:   args.MaxTokens,
 		Temperature: args.Temperature,
 		Model:       model,
-		Timeout:     2 * time.Minute,
 	}, func(message string) error {
 		fmt.Fprint(writer, message)
 		return nil

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/PullRequestInc/go-gpt3"
+	"github.com/yiblet/hlp/chat"
 )
 
 const systemMessage = `
@@ -78,14 +78,14 @@ func (args *askCmd) buildContent(ctx context.Context) (string, error) {
 	return sb.String(), nil
 }
 
-func (args *askCmd) messages(content string) []gpt3.ChatCompletionRequestMessage {
+func (args *askCmd) messages(content string) []chat.Message {
 	if args.Bash {
-		return []gpt3.ChatCompletionRequestMessage{
+		return []chat.Message{
 			{Role: "system", Content: systemMessage},
 			{Role: "user", Content: content},
 		}
 	} else {
-		return []gpt3.ChatCompletionRequestMessage{
+		return []chat.Message{
 			{Role: "system", Content: content},
 		}
 	}
@@ -145,12 +145,13 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 		var response strings.Builder
 		out := io.MultiWriter(os.Stdout, &response)
 
-		err = aiStream(ctx, client, aiStreamInput{
+		ctx, cancel := context.WithTimeout(ctx, time.Minute*2)
+		defer cancel()
+		err = client.ChatStream(ctx, chat.Input{
 			Messages:    messages,
 			MaxTokens:   args.MaxTokens,
 			Temperature: args.Temperature,
 			Model:       model,
-			Timeout:     2 * time.Minute,
 		}, func(message string) error {
 			if message != "" {
 				lastMessage = message
@@ -191,8 +192,8 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 
 		messages = append(
 			messages,
-			gpt3.ChatCompletionRequestMessage{Role: "assistant", Content: response.String()},
-			gpt3.ChatCompletionRequestMessage{Role: "user", Content: line},
+			chat.Message{Role: "assistant", Content: response.String()},
+			chat.Message{Role: "user", Content: line},
 		)
 	}
 	return nil

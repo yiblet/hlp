@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/PullRequestInc/go-gpt3"
 	"github.com/kirsle/configdir"
+	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
+	"github.com/yiblet/hlp/chat"
 )
 
 const defaultConfigFilename = "configuration.json"
@@ -28,23 +30,24 @@ func (c *config) Model() string {
 	return c.DefaultModel
 }
 
-func (c *config) Client() gpt3.Client {
+func (c *config) Client() chat.Streamer {
 	httpClient := &http.Client{
 		Timeout: 0,
 	}
 
-	opts := []gpt3.ClientOption{
-		gpt3.WithHTTPClient(httpClient),
-		gpt3.WithDefaultEngine(c.Model()),
+	openai.NewClient()
+
+	opts := []option.RequestOption{
+		option.WithHTTPClient(httpClient),
 	}
 
 	if c.OpenaiAPIEndpoint != "" {
-		opts = append(opts, gpt3.WithBaseURL(c.OpenaiAPIEndpoint))
+		opts = append(opts, option.WithBaseURL(c.OpenaiAPIEndpoint))
 	}
 
-	client := gpt3.NewClient(c.OpenAIAPIKey, opts...)
+	client := openai.NewClient(opts...)
 
-	return client
+	return chat.NewOpenAIStreamer(client)
 }
 
 func getConfigPath() string {
