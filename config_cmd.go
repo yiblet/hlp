@@ -100,12 +100,12 @@ type configValue interface {
 type openaiEndpointValue struct{}
 
 func (openaiEndpointValue) set(config *config, value string) error {
-	config.OpenaiAPIEndpoint = value
+	config.OpenAIAPIEndpoint = value
 	return nil
 }
 
 func (openaiEndpointValue) get(config *config) string {
-	return config.OpenaiAPIEndpoint
+	return config.OpenAIAPIEndpoint
 }
 
 func (openaiEndpointValue) fromEnv() string {

@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -18,9 +20,10 @@ const defaultConfigFilename = "configuration.json"
 
 type config struct {
 	OpenAIAPIKey      string `json:"openai_api_key"`
-	OpenaiAPIEndpoint string `json:"endpoint,omitempty"`
+	OpenAIAPIEndpoint string `json:"endpoint,omitempty"`
 	DefaultModel      string `json:"model,omitempty"`
 	fileName          string
+	debug             bool
 }
 
 func (c *config) Model() string {
@@ -30,9 +33,54 @@ func (c *config) Model() string {
 	return c.DefaultModel
 }
 
+type loggingRoundTripper struct{ inner http.RoundTripper }
+
+func (l loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	fmt.Printf("Request: %s %s\n", req.Method, req.URL.String())
+	for k, v := range req.Header {
+		fmt.Printf("%s: %s\n", k, v)
+	}
+
+	if req.ContentLength > 0 && req.ContentLength < 1024*16 {
+		buf, err := io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("%s\n", string(buf))
+		req.Body = io.NopCloser(bytes.NewBuffer(buf))
+	}
+	fmt.Println()
+
+	resp, err := l.inner.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("Response: %s\n", resp.Status)
+	for k, v := range resp.Header {
+		fmt.Printf("%s: %s\n", k, v)
+	}
+
+	if resp.ContentLength > 0 && resp.ContentLength < 1024*16 {
+		buf, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("%s\n", string(buf))
+		resp.Body = io.NopCloser(bytes.NewBuffer(buf))
+	}
+	fmt.Println()
+
+	return resp, nil
+}
+
 func (c *config) Client() chat.Streamer {
 	httpClient := &http.Client{
 		Timeout: 0,
+	}
+
+	if c.debug {
+		httpClient.Transport = loggingRoundTripper{inner: httpClient.Transport}
 	}
 
 	openai.NewClient()
@@ -41,8 +89,12 @@ func (c *config) Client() chat.Streamer {
 		option.WithHTTPClient(httpClient),
 	}
 
-	if c.OpenaiAPIEndpoint != "" {
-		opts = append(opts, option.WithBaseURL(c.OpenaiAPIEndpoint))
+	if c.OpenAIAPIEndpoint != "" {
+		opts = append(opts, option.WithBaseURL(c.OpenAIAPIEndpoint))
+	}
+
+	if c.OpenAIAPIKey != "" {
+		opts = append(opts, option.WithAPIKey(c.OpenAIAPIKey))
 	}
 
 	client := openai.NewClient(opts...)
@@ -80,13 +132,15 @@ func (c *config) Write() error {
 	return encoder.Encode(c)
 }
 
-func ReadConfig(fileName string) (config, error) {
+func ReadConfig(fileName string, debug bool) (config, error) {
 	fileName = strings.TrimSpace(fileName)
 	if fileName == "" {
 		fileName = defaultConfigFilename
 	}
 
-	c := config{}
+	c := config{
+		debug: debug,
+	}
 	// A common use case is to get a private config folder for your app to
 	// place its settings files into, that are specific to the local user.
 	configPath := getConfigPath()

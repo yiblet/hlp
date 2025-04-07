@@ -2,48 +2,31 @@ package chat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
+	"log"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/packages/param"
-	"github.com/openai/openai-go/shared"
 )
 
 type OpenAIStreamer struct {
-	client openai.Client
+	client        openai.Client
+	disableStream bool
 }
 
-// ChatStream implements Streamer.
-func (o *OpenAIStreamer) ChatStream(ctx context.Context, request Input, onData func(message string) error) error {
-	// Map Input messages to OpenAI message parameters
-	messages := make([]openai.ChatCompletionMessageParamUnion, len(request.Messages))
-	for i, msg := range request.Messages {
-		switch msg.Role {
-		case "user":
-			messages[i] = openai.UserMessage(msg.Content)
-		case "assistant":
-			messages[i] = openai.AssistantMessage(msg.Content)
-		case "system":
-			messages[i] = openai.SystemMessage(msg.Content)
-		// Add other roles if needed (e.g., tool, function)
-		default:
-			// Potentially handle unknown roles or return an error
-			messages[i] = openai.UserMessage(msg.Content) // Default to user for safety
-		}
+func (o *OpenAIStreamer) ChatStream(ctx context.Context, request Input, onData func(string) error) error {
+	if o.disableStream {
+		return o.chatWithoutStream(ctx, request, onData)
+	} else {
+		return o.chatWithStream(ctx, request, onData)
 	}
+}
 
+func (o *OpenAIStreamer) chatWithStream(ctx context.Context, request Input, onData func(message string) error) error {
 	// Prepare the OpenAI request parameters
-	params := openai.ChatCompletionNewParams{
-		Model:    shared.ChatModel(request.Model),
-		Messages: messages,
-	}
-	if request.MaxTokens > 0 {
-		params.MaxTokens = param.NewOpt(int64(request.MaxTokens))
-	}
-	if request.Temperature != nil {
-		params.Temperature = param.NewOpt(float64(*request.Temperature))
-	}
+	params := createParams(request)
 
 	// Create the stream
 	stream := o.client.Chat.Completions.NewStreaming(ctx, params)
@@ -81,9 +64,52 @@ func (o *OpenAIStreamer) ChatStream(ctx context.Context, request Input, onData f
 	return nil // No errors encountered
 }
 
+func (o *OpenAIStreamer) chatWithoutStream(ctx context.Context, request Input, onData func(string) error) error {
+	params := createParams(request)
+
+	paramsJSON, err := json.Marshal(params)
+	log.Printf("params: %s", paramsJSON)
+	res, err := o.client.Chat.Completions.New(ctx, params)
+	if err != nil {
+		return err
+	}
+	return onData(res.Choices[0].Message.Content)
+}
+
 func NewOpenAIStreamer(client openai.Client) *OpenAIStreamer {
 	return &OpenAIStreamer{client: client}
 }
 
 // ensure that OpenAIStreamer implements the Streamer interface
 var _ Streamer = (*OpenAIStreamer)(nil)
+
+func createParams(request Input) openai.ChatCompletionNewParams {
+	// Map Input messages to OpenAI message parameters
+	messages := make([]openai.ChatCompletionMessageParamUnion, len(request.Messages))
+	for i, msg := range request.Messages {
+		switch msg.Role {
+		case "user":
+			messages[i] = openai.UserMessage(msg.Content)
+		case "assistant":
+			messages[i] = openai.AssistantMessage(msg.Content)
+		case "system":
+			messages[i] = openai.SystemMessage(msg.Content)
+		// Add other roles if needed (e.g., tool, function)
+		default:
+			// Potentially handle unknown roles or return an error
+			messages[i] = openai.UserMessage(msg.Content) // Default to user for safety
+		}
+	}
+	params := openai.ChatCompletionNewParams{
+		Model:    request.Model,
+		Messages: messages,
+	}
+	if request.MaxTokens > 0 {
+		params.MaxTokens = param.NewOpt(int64(request.MaxTokens))
+	}
+	if request.Temperature != nil {
+		params.Temperature = param.NewOpt(float64(*request.Temperature))
+	}
+	return params
+
+}

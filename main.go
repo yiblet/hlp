@@ -15,11 +15,12 @@ type mainCmd struct {
 	Config     *configCmd `arg:"subcommand"`
 	Chat       *chatCmd   `arg:"subcommand"`
 	ConfigName string     `arg:"-c,--config,env:HLP_CONFIG" help:"name of the configuration set"`
+	Debug      bool       `arg:"-d,--debug" help:"enable debug mode"`
 }
 
 func (args *mainCmd) SetupConfig() (config, error) {
 	var err error
-	cfg, err := ReadConfig(args.ConfigName)
+	cfg, err := ReadConfig(args.ConfigName, args.Debug)
 
 	if err != nil {
 		return config{}, fmt.Errorf("failed fetching configs: %w", err)
