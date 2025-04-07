@@ -5,7 +5,6 @@ go 1.21
 toolchain go1.24.2
 
 require (
-	github.com/PullRequestInc/go-gpt3 v1.2.0
 	github.com/alexflint/go-arg v1.5.1
 	github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f
 	github.com/openai/openai-go v0.1.0-beta.6
