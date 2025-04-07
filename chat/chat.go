@@ -67,8 +67,6 @@ func (o *OpenAIStreamer) chatWithStream(ctx context.Context, request Input, onDa
 func (o *OpenAIStreamer) chatWithoutStream(ctx context.Context, request Input, onData func(string) error) error {
 	params := createParams(request)
 
-	paramsJSON, err := json.Marshal(params)
-	log.Printf("params: %s", paramsJSON)
 	res, err := o.client.Chat.Completions.New(ctx, params)
 	if err != nil {
 		return err
