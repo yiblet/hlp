@@ -2,10 +2,8 @@ package chat
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
-	"log"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/packages/param"
