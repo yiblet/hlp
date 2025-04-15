@@ -125,7 +125,17 @@ func (args *askCmd) poll(input *bufio.Reader) (string, bool, error) {
 	}
 }
 
+func (args *askCmd) init() {
+	for _, a := range args.Attach {
+		if a == "-" {
+			args.Once = true // if stdin is attached, we cant use it as a tty
+			break
+		}
+	}
+}
+
 func (args *askCmd) Execute(ctx context.Context, config *config) error {
+	args.init()
 	model := args.Model
 	if model == "" {
 		model = strings.TrimSpace(config.Model())
