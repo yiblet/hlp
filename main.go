@@ -11,9 +11,10 @@ import (
 )
 
 type mainCmd struct {
-	Ask        *askCmd    `arg:"subcommand"`
-	Config     *configCmd `arg:"subcommand"`
-	Chat       *chatCmd   `arg:"subcommand"`
+	Cat        *catCmd    `arg:"subcommand" help:"read from stdin and positional to apply some change"`
+	Ask        *askCmd    `arg:"subcommand" help:"ask for a question and print the answer"`
+	Config     *configCmd `arg:"subcommand" help:"configure hlp"`
+	Chat       *chatCmd   `arg:"subcommand" help:"chat with hlp using chat-file format"`
 	ConfigName string     `arg:"-c,--config,env:HLP_CONFIG" help:"name of the configuration set"`
 	Debug      bool       `arg:"-d,--debug" help:"enable debug mode"`
 }
@@ -41,6 +42,8 @@ func (args *mainCmd) Execute(ctx context.Context) error {
 		err = args.Config.Execute(ctx, &config)
 	case args.Chat != nil:
 		err = args.Chat.Execute(ctx, &config)
+	case args.Cat != nil:
+		err = args.Cat.Execute(ctx, &config)
 	default:
 		err = writeHelp(args, os.Stderr)
 	}

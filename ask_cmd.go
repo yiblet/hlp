@@ -30,6 +30,7 @@ chmod -R 644 /path/to/directory/
 # 644 is the standard permission for files, which means the owner has read and write access, and others have only read access
 `
 
+
 type askCmd struct {
 	Question    []string `arg:"positional"`
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
