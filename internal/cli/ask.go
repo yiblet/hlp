@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bufio"
@@ -11,7 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yiblet/hlp/chat"
+	configpkg "github.com/yiblet/hlp/internal/config"
+	"github.com/yiblet/hlp/internal/llm"
+	"github.com/yiblet/hlp/internal/term"
+	"github.com/yiblet/hlp/internal/xerr"
 )
 
 const systemMessage = `
@@ -30,8 +33,7 @@ chmod -R 644 /path/to/directory/
 # 644 is the standard permission for files, which means the owner has read and write access, and others have only read access
 `
 
-
-type askCmd struct {
+type AskCmd struct {
 	Question    []string `arg:"positional"`
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
 	Temperature *float32 `arg:"--temp"`
@@ -41,7 +43,7 @@ type askCmd struct {
 	Once        bool     `arg:"--once,-o" help:"whether to just ask the model once"`
 }
 
-func (args *askCmd) buildContent(ctx context.Context) (string, error) {
+func (args *AskCmd) buildContent(ctx context.Context) (string, error) {
 	var sb strings.Builder
 	for idx, q := range args.Question {
 		if idx != 0 {
@@ -79,21 +81,18 @@ func (args *askCmd) buildContent(ctx context.Context) (string, error) {
 	return sb.String(), nil
 }
 
-func (args *askCmd) messages(content string) []chat.Message {
+func (args *AskCmd) messages(content string) []llm.Message {
 	if args.Bash {
-		return []chat.Message{
+		return []llm.Message{
 			{Role: "system", Content: systemMessage},
 			{Role: "user", Content: content},
 		}
-	} else {
-		return []chat.Message{
-			{Role: "system", Content: content},
-		}
 	}
 
+	return []llm.Message{{Role: "system", Content: content}}
 }
 
-func (args *askCmd) poll(input *bufio.Reader) (string, bool, error) {
+func (args *AskCmd) poll(input *bufio.Reader) (string, bool, error) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
 	lineCh := make(chan string)
@@ -126,16 +125,16 @@ func (args *askCmd) poll(input *bufio.Reader) (string, bool, error) {
 	}
 }
 
-func (args *askCmd) init() {
+func (args *AskCmd) init() {
 	for _, a := range args.Attach {
 		if a == "-" {
-			args.Once = true // if stdin is attached, we cant use it as a tty
+			args.Once = true
 			break
 		}
 	}
 }
 
-func (args *askCmd) Execute(ctx context.Context, config *config) error {
+func (args *AskCmd) Execute(ctx context.Context, config *configpkg.Config) error {
 	args.init()
 	model := args.Model
 	if model == "" {
@@ -150,7 +149,6 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 	}
 
 	input := bufio.NewReader(os.Stdin)
-
 	messages := args.messages(content)
 	for {
 		var response strings.Builder
@@ -158,7 +156,7 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 
 		ctx, cancel := context.WithTimeout(ctx, time.Minute*2)
 		defer cancel()
-		err = client.ChatStream(ctx, chat.Input{
+		err = client.ChatStream(ctx, llm.Input{
 			Messages:    messages,
 			MaxTokens:   args.MaxTokens,
 			Temperature: args.Temperature,
@@ -184,7 +182,7 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 			break
 		}
 
-		_, err := fmt.Printf("%shlp>%s ", colorGreen, colorReset)
+		_, err := fmt.Printf("%shlp>%s ", term.ColorGreen, term.ColorReset)
 		if err != nil {
 			return err
 		}
@@ -192,7 +190,7 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 		line, cont, err := args.poll(input)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, io.ErrClosedPipe) {
-				return terminateSilently(err)
+				return xerr.TerminateSilently(err)
 			}
 			return err
 		}
@@ -203,8 +201,8 @@ func (args *askCmd) Execute(ctx context.Context, config *config) error {
 
 		messages = append(
 			messages,
-			chat.Message{Role: "assistant", Content: response.String()},
-			chat.Message{Role: "user", Content: line},
+			llm.Message{Role: "assistant", Content: response.String()},
+			llm.Message{Role: "user", Content: line},
 		)
 	}
 	return nil

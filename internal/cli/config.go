@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bytes"
@@ -7,15 +7,18 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	configpkg "github.com/yiblet/hlp/internal/config"
+	"github.com/yiblet/hlp/internal/xio"
 )
 
-type configCmd struct {
-	Set  *configSetCmd  `arg:"subcommand"`
-	Get  *configGetCmd  `arg:"subcommand"`
-	Path *configPathCmd `arg:"subcommand"`
+type ConfigCmd struct {
+	Set  *ConfigSetCmd  `arg:"subcommand"`
+	Get  *ConfigGetCmd  `arg:"subcommand"`
+	Path *ConfigPathCmd `arg:"subcommand"`
 }
 
-func (c *configCmd) Execute(ctx context.Context, config *config) error {
+func (c *ConfigCmd) Execute(ctx context.Context, config *configpkg.Config) error {
 	switch {
 	case c.Set != nil:
 		return c.Set.Execute(ctx, config)
@@ -27,8 +30,7 @@ func (c *configCmd) Execute(ctx context.Context, config *config) error {
 		buf := bytes.NewBuffer([]byte{})
 		enc := json.NewEncoder(buf)
 		enc.SetIndent("", "  ")
-		err := enc.Encode(config)
-		if err != nil {
+		if err := enc.Encode(config); err != nil {
 			return err
 		}
 
@@ -37,23 +39,20 @@ func (c *configCmd) Execute(ctx context.Context, config *config) error {
 	}
 }
 
-type configPathCmd struct{}
+type ConfigPathCmd struct{}
 
-func (c *configPathCmd) Execute(ctx context.Context, config *config) error {
-	fmt.Printf("%s\n", getConfigPath())
+func (c *ConfigPathCmd) Execute(ctx context.Context, config *configpkg.Config) error {
+	fmt.Printf("%s\n", configpkg.Path())
 	return nil
 }
 
-type configGetCmd struct {
-	Model *struct {
-	} `arg:"subcommand:model"`
-	OpenAIAPIKey *struct {
-	} `arg:"subcommand:openai_api_key"`
-	OpenAIAPIEndpoint *struct {
-	} `arg:"subcommand:openai_api_endpoint"`
+type ConfigGetCmd struct {
+	Model             *struct{} `arg:"subcommand:model"`
+	OpenAIAPIKey      *struct{} `arg:"subcommand:openai_api_key"`
+	OpenAIAPIEndpoint *struct{} `arg:"subcommand:openai_api_endpoint"`
 }
 
-func (c *configGetCmd) Execute(ctx context.Context, config *config) error {
+func (c *ConfigGetCmd) Execute(ctx context.Context, config *configpkg.Config) error {
 	switch {
 	case c.Model != nil:
 		return executeGet(config, modelKeyValue{})
@@ -62,11 +61,11 @@ func (c *configGetCmd) Execute(ctx context.Context, config *config) error {
 	case c.OpenAIAPIEndpoint != nil:
 		return executeGet(config, openaiEndpointValue{})
 	default:
-		return writeHelp(c, os.Stderr)
+		return xio.WriteHelp(c, os.Stderr)
 	}
 }
 
-type configSetCmd struct {
+type ConfigSetCmd struct {
 	Model *struct {
 		Model string `arg:"positional"`
 	} `arg:"subcommand:model"`
@@ -78,7 +77,7 @@ type configSetCmd struct {
 	} `arg:"subcommand:openai_api_endpoint"`
 }
 
-func (c *configSetCmd) Execute(ctx context.Context, config *config) error {
+func (c *ConfigSetCmd) Execute(ctx context.Context, config *configpkg.Config) error {
 	switch {
 	case c.Model != nil:
 		return executeSet(config, modelKeyValue{}, c.Model.Model)
@@ -87,24 +86,24 @@ func (c *configSetCmd) Execute(ctx context.Context, config *config) error {
 	case c.OpenAIAPIEndpoint != nil:
 		return executeSet(config, openaiEndpointValue{}, c.OpenAIAPIEndpoint.OpenAIAPIEndpoint)
 	default:
-		return writeHelp(c, os.Stderr)
+		return xio.WriteHelp(c, os.Stderr)
 	}
 }
 
 type configValue interface {
-	set(config *config, value string) error
-	get(config *config) string
+	set(config *configpkg.Config, value string) error
+	get(config *configpkg.Config) string
 	name() string
 }
 
 type openaiEndpointValue struct{}
 
-func (openaiEndpointValue) set(config *config, value string) error {
+func (openaiEndpointValue) set(config *configpkg.Config, value string) error {
 	config.OpenAIAPIEndpoint = value
 	return nil
 }
 
-func (openaiEndpointValue) get(config *config) string {
+func (openaiEndpointValue) get(config *configpkg.Config) string {
 	return config.OpenAIAPIEndpoint
 }
 
@@ -119,12 +118,12 @@ func (openaiEndpointValue) name() string {
 
 type openaiKeyValue struct{}
 
-func (openaiKeyValue) set(config *config, value string) error {
+func (openaiKeyValue) set(config *configpkg.Config, value string) error {
 	config.OpenAIAPIKey = value
 	return nil
 }
 
-func (openaiKeyValue) get(config *config) string {
+func (openaiKeyValue) get(config *configpkg.Config) string {
 	return config.OpenAIAPIKey
 }
 
@@ -139,12 +138,12 @@ func (openaiKeyValue) name() string {
 
 type modelKeyValue struct{}
 
-func (modelKeyValue) set(config *config, value string) error {
+func (modelKeyValue) set(config *configpkg.Config, value string) error {
 	config.DefaultModel = value
 	return nil
 }
 
-func (modelKeyValue) get(config *config) string {
+func (modelKeyValue) get(config *configpkg.Config) string {
 	return config.DefaultModel
 }
 
@@ -152,7 +151,7 @@ func (modelKeyValue) name() string {
 	return "openai model"
 }
 
-func executeSet(config *config, configVal configValue, value string) error {
+func executeSet(config *configpkg.Config, configVal configValue, value string) error {
 	if env, ok := configVal.(interface{ fromEnv() string }); value == "" && ok {
 		value = strings.TrimSpace(env.fromEnv())
 		if value != "" {
@@ -194,7 +193,7 @@ func executeSet(config *config, configVal configValue, value string) error {
 	return nil
 }
 
-func executeGet(config *config, configVal configValue) error {
+func executeGet(config *configpkg.Config, configVal configValue) error {
 	if value := configVal.get(config); value != "" {
 		fmt.Printf("%s\n", value)
 		return nil

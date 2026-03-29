@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"bytes"
@@ -13,12 +13,12 @@ import (
 	"github.com/kirsle/configdir"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
-	"github.com/yiblet/hlp/chat"
+	"github.com/yiblet/hlp/internal/llm"
 )
 
 const defaultConfigFilename = "configuration.json"
 
-type config struct {
+type Config struct {
 	OpenAIAPIKey      string `json:"openai_api_key"`
 	OpenAIAPIEndpoint string `json:"endpoint,omitempty"`
 	DefaultModel      string `json:"model,omitempty"`
@@ -26,7 +26,7 @@ type config struct {
 	debug             bool
 }
 
-func (c *config) Model() string {
+func (c *Config) Model() string {
 	if c.DefaultModel == "" {
 		return "gpt-4o-mini"
 	}
@@ -74,57 +74,45 @@ func (l loggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	return resp, nil
 }
 
-func (c *config) Client() chat.Streamer {
-	httpClient := &http.Client{
-		Timeout: 0,
-	}
-
+func (c *Config) Client() llm.Streamer {
+	httpClient := &http.Client{Timeout: 0}
 	if c.debug {
 		httpClient.Transport = loggingRoundTripper{inner: httpClient.Transport}
 	}
 
 	openai.NewClient()
 
-	opts := []option.RequestOption{
-		option.WithHTTPClient(httpClient),
-	}
-
+	opts := []option.RequestOption{option.WithHTTPClient(httpClient)}
 	if c.OpenAIAPIEndpoint != "" {
 		opts = append(opts, option.WithBaseURL(c.OpenAIAPIEndpoint))
 	}
-
 	if c.OpenAIAPIKey != "" {
 		opts = append(opts, option.WithAPIKey(c.OpenAIAPIKey))
 	}
 
 	client := openai.NewClient(opts...)
-
-	return chat.NewOpenAIStreamer(client)
+	return llm.NewOpenAIStreamer(client)
 }
 
-func getConfigPath() string {
-	// A common use case is to get a private config folder for your app to
-	// place its settings files into, that are specific to the local user.
+func Path() string {
 	return configdir.LocalConfig("hlp")
 }
 
-func (c *config) Write() error {
+func (c *Config) Write() error {
 	fileName := c.fileName
 	if fileName == "" {
 		fileName = defaultConfigFilename
 	}
 
-	configPath := getConfigPath()
-	err := configdir.MakePath(configPath) // Ensure it exists.
-	if err != nil {
+	configPath := Path()
+	if err := configdir.MakePath(configPath); err != nil {
 		return fmt.Errorf("cannot read path: %w", err)
 	}
 
-	// Deal with a JSON configuration file in that folder.
 	configFile := filepath.Join(configPath, fileName)
 	fh, err := os.Create(configFile)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer fh.Close()
 
@@ -132,44 +120,36 @@ func (c *config) Write() error {
 	return encoder.Encode(c)
 }
 
-func ReadConfig(fileName string, debug bool) (config, error) {
+func Read(fileName string, debug bool) (Config, error) {
 	fileName = strings.TrimSpace(fileName)
 	if fileName == "" {
 		fileName = defaultConfigFilename
 	}
 
-	c := config{
-		debug: debug,
-	}
-	// A common use case is to get a private config folder for your app to
-	// place its settings files into, that are specific to the local user.
-	configPath := getConfigPath()
-	err := os.MkdirAll(configPath, 0755) // Ensure it exists.
+	c := Config{debug: debug}
+	configPath := Path()
+	err := os.MkdirAll(configPath, 0755)
 	if err != nil {
-		return config{}, fmt.Errorf("cannot read path: %w", err)
+		return Config{}, fmt.Errorf("cannot read path: %w", err)
 	}
 
-	// Deal with a JSON configuration file in that folder.
 	configFile := filepath.Join(configPath, fileName)
 	if _, err = os.Stat(configFile); err != nil {
 		if os.IsNotExist(err) {
-			return config{
-				fileName: fileName,
-			}, nil
+			return Config{fileName: fileName}, nil
 		}
-		return config{}, err
+		return Config{}, err
 	}
 
-	// Load the existing file.
 	fh, err := os.Open(configFile)
 	if err != nil {
-		panic(err)
+		return Config{}, err
 	}
 	defer fh.Close()
 
 	decoder := json.NewDecoder(fh)
 	if err := decoder.Decode(&c); err != nil {
-		return config{}, err
+		return Config{}, err
 	}
 
 	c.fileName = fileName

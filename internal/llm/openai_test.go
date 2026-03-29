@@ -1,4 +1,4 @@
-package chat
+package llm
 
 import (
 	"context"
@@ -8,28 +8,22 @@ import (
 	"testing"
 )
 
-// testStream implements the Streamer interface for testing.
 type testStream struct {
 	t        *testing.T
 	response string
-	// We can add fields here later if we need to inspect the Input passed to ChatStream
 }
 
-// ChatStream simulates streaming the response string chunk by chunk (split by space).
 func (ts *testStream) ChatStream(ctx context.Context, request Input, onData func(message string) error) error {
-	// Simulate receiving chunks based on spaces
 	chunks := strings.Split(ts.response, " ")
 	for i, chunk := range chunks {
 		message := chunk
 		if i > 0 {
-			message = " " + chunk // Add back the space separator for subsequent chunks
+			message = " " + chunk
 		}
 		ts.t.Logf("Simulating stream chunk: %#v", message)
 		if err := onData(message); err != nil {
-			// If the callback returns an error, the stream should stop.
 			return fmt.Errorf("onData callback failed: %w", err)
 		}
-		// Check context cancellation, though not strictly necessary for this simple mock
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
@@ -47,18 +41,10 @@ func TestStreamer_ChatStream(t *testing.T) {
 func testValidStream(t *testing.T) {
 	t.Parallel()
 	expectedResponse := "this is a valid stream response"
-	streamer := &testStream{
-		t:        t,
-		response: expectedResponse,
-	}
+	streamer := &testStream{t: t, response: expectedResponse}
 
 	var sb strings.Builder
-	input := Input{ // Example input, adjust if needed for future tests
-		Model: "test-model",
-		Messages: []Message{
-			{Role: "user", Content: "Hello"},
-		},
-	}
+	input := Input{Model: "test-model", Messages: []Message{{Role: "user", Content: "Hello"}}}
 
 	err := streamer.ChatStream(context.Background(), input, func(message string) error {
 		t.Logf("Received stream chunk: %#v", message)
@@ -82,15 +68,12 @@ func testValidStream(t *testing.T) {
 func testCallbackErrorStopsStream(t *testing.T) {
 	t.Parallel()
 	expectedResponse := "this stream will stop early"
-	streamer := &testStream{
-		t:        t,
-		response: expectedResponse,
-	}
+	streamer := &testStream{t: t, response: expectedResponse}
 	callbackError := fmt.Errorf("intentional callback error")
-	stopWord := "stop" // Stop after receiving this word
+	stopWord := "stop"
 
 	var sb strings.Builder
-	input := Input{} // Minimal input
+	input := Input{}
 
 	err := streamer.ChatStream(context.Background(), input, func(message string) error {
 		t.Logf("Received stream chunk: %#v", message)
@@ -98,7 +81,6 @@ func testCallbackErrorStopsStream(t *testing.T) {
 		if writeErr != nil {
 			return fmt.Errorf("failed to write to string builder: %w", writeErr)
 		}
-		// Return an error if the message contains the stop word
 		if strings.Contains(message, stopWord) {
 			return callbackError
 		}
@@ -110,7 +92,7 @@ func testCallbackErrorStopsStream(t *testing.T) {
 	}
 
 	actualResponse := sb.String()
-	expectedPartialResponse := "this stream will stop" // Should include the chunk that caused the error
+	expectedPartialResponse := "this stream will stop"
 	if !strings.HasPrefix(expectedResponse, actualResponse) {
 		t.Errorf("Stream result should be a prefix of the full response when stopped early.\nExpected prefix: %#v\nActual:   %#v", expectedPartialResponse, actualResponse)
 	}

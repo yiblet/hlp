@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"bufio"
@@ -10,11 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yiblet/hlp/chat"
-	"github.com/yiblet/hlp/parse"
+	"github.com/yiblet/hlp/internal/chatfile"
+	configpkg "github.com/yiblet/hlp/internal/config"
+	"github.com/yiblet/hlp/internal/llm"
+	"github.com/yiblet/hlp/internal/term"
 )
 
-type chatCmd struct {
+type ChatCmd struct {
 	File        string   `arg:"required,positional" help:"the input chat file, if you pass - the command will read from stdin"`
 	Write       *string  `arg:"positional" help:"the output chat file, if you pass - the output will be the same as input"`
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
@@ -23,21 +25,8 @@ type chatCmd struct {
 	Model       string   `arg:"--model,-m" help:"set openai model"`
 }
 
-// appendChatFile appends a new chat response to the specified file.
-// The role parameter must be one of "system", "assistant", or "user".
-// The content parameter should contain the text of the chat response.
-// The file will be created if it doesn't exist, and the new chat response
-// will be appended to the existing content in the file.
-//
-// The format of the appended chat response will be:
-//
-// --- role
-// content
-//
-// The function returns an error if the role is invalid or if there's an issue
-// while opening or writing to the file.
-func (args *chatCmd) appendChatFile(writer io.Writer, role, content string) error {
-	if err := parse.ValidateRole(role); err != nil {
+func (args *ChatCmd) appendChatFile(writer io.Writer, role, content string) error {
+	if err := chatfile.ValidateRole(role); err != nil {
 		return err
 	}
 
@@ -48,19 +37,14 @@ func (args *chatCmd) appendChatFile(writer io.Writer, role, content string) erro
 	return buf.Flush()
 }
 
-func (args *chatCmd) writeTo(
-	input string,
-	content string,
-	writer io.Writer,
-) error {
-	// generate output for writing
+func (args *ChatCmd) writeTo(input string, content string, writer io.Writer) error {
 	output := bufio.NewWriter(writer)
 	if _, err := output.WriteString(input); err != nil {
 		return err
 	}
 
 	output.WriteRune('\n')
-	if input[len(input)-1] != '\n' { // add an extra line if needed
+	if input[len(input)-1] != '\n' {
 		output.WriteRune('\n')
 	}
 	if err := args.appendChatFile(output, "assistant", content); err != nil {
@@ -70,16 +54,12 @@ func (args *chatCmd) writeTo(
 	return output.Flush()
 }
 
-func (args *chatCmd) write(
-	input string,
-	content string,
-) error {
+func (args *ChatCmd) write(input string, content string) error {
 	if args.Write == nil {
 		return nil
 	}
 
 	outfile := *args.Write
-
 	if outfile == "-" {
 		if args.File == "-" {
 			return fmt.Errorf("cannot output to stdin")
@@ -96,19 +76,14 @@ func (args *chatCmd) write(
 	return args.writeTo(input, content, file)
 }
 
-func (args *chatCmd) outputWriter() (io.Writer, func() error) {
-	var outputWriter io.Writer
-	var close func() error
+func (args *ChatCmd) outputWriter() (io.Writer, func() error) {
 	if !args.Color {
-		outputWriter = os.Stdout
-		close = func() error { return nil }
-	} else {
-		outputWriter, close = getOutputWriter()
+		return os.Stdout, func() error { return nil }
 	}
-	return outputWriter, close
+	return term.OutputWriter()
 }
 
-func (args *chatCmd) readAll(reader io.Reader) error {
+func (args *ChatCmd) readAll(reader io.Reader) error {
 	var buf [4096]byte
 	for {
 		_, err := reader.Read(buf[:])
@@ -118,16 +93,18 @@ func (args *chatCmd) readAll(reader io.Reader) error {
 	}
 }
 
-func (args *chatCmd) Execute(ctx context.Context, config *config) error {
+func (args *ChatCmd) Execute(ctx context.Context, config *configpkg.Config) error {
 	model := args.Model
 	if model == "" {
 		model = strings.TrimSpace(config.Model())
 	}
 
-	var err error
 	client := config.Client()
 
-	var file io.ReadCloser
+	var (
+		err  error
+		file io.ReadCloser
+	)
 	if args.File != "-" {
 		file, err = os.Open(args.File)
 		if err != nil {
@@ -141,8 +118,7 @@ func (args *chatCmd) Execute(ctx context.Context, config *config) error {
 	var inputContent strings.Builder
 	reader := io.TeeReader(file, &inputContent)
 
-	// Read and parse the file
-	messages, err := parse.ParseChatFile(reader)
+	messages, err := chatfile.ParseChatFile(reader)
 	if err != nil {
 		return err
 	}
@@ -158,15 +134,14 @@ func (args *chatCmd) Execute(ctx context.Context, config *config) error {
 
 	ctx, cancel := context.WithTimeout(ctx, time.Minute*2)
 	defer cancel()
-	// Call ChatCompletionStream with the parsed messages
-	err = client.ChatStream(ctx, chat.Input{
+	err = client.ChatStream(ctx, llm.Input{
 		Messages:    messages,
 		MaxTokens:   args.MaxTokens,
 		Temperature: args.Temperature,
 		Model:       model,
 	}, func(message string) error {
-		fmt.Fprint(writer, message)
-		return nil
+		_, err := fmt.Fprint(writer, message)
+		return err
 	})
 	if err != nil {
 		return err
