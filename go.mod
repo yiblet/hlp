@@ -5,10 +5,10 @@ go 1.21
 toolchain go1.24.2
 
 require (
-	github.com/alexflint/go-arg v1.5.1
+	github.com/alexflint/go-arg v1.6.1
 	github.com/kirsle/configdir v0.0.0-20170128060238-e45d2f54772f
-	github.com/openai/openai-go v0.1.0-beta.6
-	github.com/stretchr/testify v1.10.0
+	github.com/openai/openai-go v1.12.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
