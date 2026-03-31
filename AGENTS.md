@@ -139,7 +139,9 @@ Follow existing Go idioms already used in this repository instead of introducing
 - Prefer table-driven tests when there are multiple input/output cases.
 - Use `t.Run(...)` for named cases.
 - Use `t.Parallel()` only when the test is actually concurrency-safe.
-- `testify/assert` is already used in `internal/chatfile/parse_test.go`; continuing to use it is acceptable.
+- Tests must not make real HTTP calls. Anything exercising CLI or request flow should use a mocked client or parser-only coverage instead of hitting external services.
+- Prefer `testify/assert` and `testify/require` for assertions.
+- When mocking behavior, prefer `testify/mock` instead of ad hoc stubs unless a tiny local fake is clearly simpler.
 - Keep test names stable so single-test invocation remains easy.
 
 ### Comments

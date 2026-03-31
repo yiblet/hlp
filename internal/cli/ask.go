@@ -34,13 +34,13 @@ chmod -R 644 /path/to/directory/
 `
 
 type AskCmd struct {
-	Question    []string `arg:"positional"`
+	Question    []string `arg:"positional" help:"question or prompt text"`
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
-	Temperature *float32 `arg:"--temp"`
+	Temperature *float32 `arg:"--temp" help:"sampling temperature for the model response"`
 	Bash        bool     `arg:"--bash" help:"output only valid bash"`
 	Model       string   `arg:"--model,-m" help:"set openai model"`
-	Attach      []string `arg:"--attach,-a,separate" help:"attach additional files at the end of the message. pass '-' to pass in stdin"`
-	Once        bool     `arg:"--once,-o" help:"whether to just ask the model once"`
+	Attach      []string `arg:"--attach,-a,separate" help:"append file contents to the prompt; pass '-' to read from stdin"`
+	Once        bool     `arg:"--once,-o" help:"send a single request and exit instead of entering follow-up mode"`
 }
 
 func (args *AskCmd) buildContent(ctx context.Context) (string, error) {

@@ -11,10 +11,10 @@ import (
 )
 
 type MainCmd struct {
-	Cat        *CatCmd    `arg:"subcommand" help:"read from stdin and positional to apply some change"`
-	Ask        *AskCmd    `arg:"subcommand" help:"ask for a question and print the answer"`
-	Config     *ConfigCmd `arg:"subcommand" help:"configure hlp"`
-	Chat       *ChatCmd   `arg:"subcommand" help:"chat with hlp using chat-file format"`
+	Cat        *CatCmd    `arg:"subcommand" help:"read stdin, append it to the prompt, and answer once"`
+	Ask        *AskCmd    `arg:"subcommand" help:"ask a question and print the answer"`
+	Config     *ConfigCmd `arg:"subcommand" help:"read and update stored configuration values"`
+	Chat       *ChatCmd   `arg:"subcommand" help:"run a chat-file conversation and optionally write the reply back"`
 	ConfigName string     `arg:"-c,--config,env:HLP_CONFIG" help:"name of the configuration set"`
 	Debug      bool       `arg:"-d,--debug" help:"enable debug mode"`
 }

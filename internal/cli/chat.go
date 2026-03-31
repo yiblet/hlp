@@ -20,8 +20,8 @@ type ChatCmd struct {
 	File        string   `arg:"required,positional" help:"the input chat file, if you pass - the command will read from stdin"`
 	Write       *string  `arg:"positional" help:"the output chat file, if you pass - the output will be the same as input"`
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
-	Temperature *float32 `-arg:"--temp"`
-	Color       bool     `default:"false"`
+	Temperature *float32 `arg:"--temp" help:"sampling temperature for the model response"`
+	Color       bool     `arg:"--color" default:"false" help:"render streamed output through bat when available"`
 	Model       string   `arg:"--model,-m" help:"set openai model"`
 }
 

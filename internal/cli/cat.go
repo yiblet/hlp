@@ -7,9 +7,9 @@ import (
 )
 
 type CatCmd struct {
-	Question    []string `arg:"positional"`
+	Question    []string `arg:"positional" help:"question or prompt text"`
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
-	Temperature *float32 `arg:"--temp"`
+	Temperature *float32 `arg:"--temp" help:"sampling temperature for the model response"`
 	Model       string   `arg:"--model,-m" help:"set openai model"`
 }
 

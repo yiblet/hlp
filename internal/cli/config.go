@@ -13,9 +13,9 @@ import (
 )
 
 type ConfigCmd struct {
-	Set  *ConfigSetCmd  `arg:"subcommand"`
-	Get  *ConfigGetCmd  `arg:"subcommand"`
-	Path *ConfigPathCmd `arg:"subcommand"`
+	Set  *ConfigSetCmd  `arg:"subcommand" help:"set a stored configuration value"`
+	Get  *ConfigGetCmd  `arg:"subcommand" help:"print a stored configuration value"`
+	Path *ConfigPathCmd `arg:"subcommand" help:"print the configuration directory path"`
 }
 
 func (c *ConfigCmd) Execute(ctx context.Context, config *configpkg.Config) error {
@@ -47,9 +47,9 @@ func (c *ConfigPathCmd) Execute(ctx context.Context, config *configpkg.Config) e
 }
 
 type ConfigGetCmd struct {
-	Model             *struct{} `arg:"subcommand:model"`
-	OpenAIAPIKey      *struct{} `arg:"subcommand:openai_api_key"`
-	OpenAIAPIEndpoint *struct{} `arg:"subcommand:openai_api_endpoint"`
+	Model             *struct{} `arg:"subcommand:model" help:"print the default model"`
+	OpenAIAPIKey      *struct{} `arg:"subcommand:openai_api_key" help:"print the stored OpenAI API key"`
+	OpenAIAPIEndpoint *struct{} `arg:"subcommand:openai_api_endpoint" help:"print the stored OpenAI API endpoint"`
 }
 
 func (c *ConfigGetCmd) Execute(ctx context.Context, config *configpkg.Config) error {
@@ -68,13 +68,13 @@ func (c *ConfigGetCmd) Execute(ctx context.Context, config *configpkg.Config) er
 type ConfigSetCmd struct {
 	Model *struct {
 		Model string `arg:"positional"`
-	} `arg:"subcommand:model"`
+	} `arg:"subcommand:model" help:"set the default model"`
 	OpenAIAPIKey *struct {
 		OpenAIAPIKey string `arg:"positional"`
-	} `arg:"subcommand:openai_api_key"`
+	} `arg:"subcommand:openai_api_key" help:"set the OpenAI API key"`
 	OpenAIAPIEndpoint *struct {
 		OpenAIAPIEndpoint string `arg:"positional"`
-	} `arg:"subcommand:openai_api_endpoint"`
+	} `arg:"subcommand:openai_api_endpoint" help:"set the OpenAI API endpoint"`
 }
 
 func (c *ConfigSetCmd) Execute(ctx context.Context, config *configpkg.Config) error {
