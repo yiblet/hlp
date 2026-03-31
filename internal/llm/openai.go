@@ -7,6 +7,7 @@ import (
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/packages/param"
+	"github.com/openai/openai-go/shared"
 )
 
 type OpenAIStreamer struct {
@@ -87,6 +88,17 @@ func createParams(request Input) openai.ChatCompletionNewParams {
 	}
 	if request.Temperature != nil {
 		params.Temperature = param.NewOpt(float64(*request.Temperature))
+	}
+	if request.Schema != nil {
+		params.ResponseFormat = openai.ChatCompletionNewParamsResponseFormatUnion{
+			OfJSONSchema: &shared.ResponseFormatJSONSchemaParam{
+				JSONSchema: shared.ResponseFormatJSONSchemaJSONSchemaParam{
+					Name:   "hlp_response",
+					Schema: request.Schema,
+					Strict: param.NewOpt(true),
+				},
+			},
+		}
 	}
 	return params
 }

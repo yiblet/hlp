@@ -2,10 +2,14 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type testStream struct {
@@ -36,6 +40,44 @@ func TestStreamer_ChatStream(t *testing.T) {
 
 	t.Run("valid stream", testValidStream)
 	t.Run("callback error stops stream", testCallbackErrorStopsStream)
+}
+
+func TestCreateParamsIncludesStructuredOutputSchema(t *testing.T) {
+	t.Parallel()
+
+	params := createParams(Input{
+		Model:    "gpt-4o-2024-08-06",
+		Messages: []Message{{Role: "user", Content: "Hello"}},
+		Schema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"answer": map[string]any{"type": "string"},
+			},
+			"required":             []string{"answer"},
+			"additionalProperties": false,
+		},
+	})
+
+	body, err := json.Marshal(params)
+	require.NoError(t, err)
+
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(body, &got))
+
+	responseFormat, ok := got["response_format"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "json_schema", responseFormat["type"])
+
+	jsonSchema, ok := responseFormat["json_schema"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "hlp_response", jsonSchema["name"])
+	assert.Equal(t, true, jsonSchema["strict"])
+
+	schema, ok := jsonSchema["schema"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "object", schema["type"])
+	assert.Equal(t, false, schema["additionalProperties"])
+	assert.Contains(t, schema, "properties")
 }
 
 func testValidStream(t *testing.T) {

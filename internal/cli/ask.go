@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -38,9 +39,40 @@ type AskCmd struct {
 	MaxTokens   int      `arg:"--tokens,-t" default:"0" help:"the maximum amount of tokens allowed in the output"`
 	Temperature *float32 `arg:"--temp" help:"sampling temperature for the model response"`
 	Bash        bool     `arg:"--bash" help:"output only valid bash"`
+	Schema      string   `arg:"--schema" help:"constrain the output to the provided JSON schema"`
 	Model       string   `arg:"--model,-m" help:"set openai model"`
 	Attach      []string `arg:"--attach,-a,separate" help:"append file contents to the prompt; pass '-' to read from stdin"`
 	Once        bool     `arg:"--once,-o" help:"send a single request and exit instead of entering follow-up mode"`
+}
+
+func (args *AskCmd) HelpEpilogue() string {
+	return `Schema examples:
+
+  Simple object:
+  hlp ask --schema '{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"],"additionalProperties":false}' "Summarize this"
+
+  Object with array:
+  hlp ask --schema '{"type":"object","properties":{"title":{"type":"string"},"tags":{"type":"array","items":{"type":"string"}}},"required":["title","tags"],"additionalProperties":false}' "Extract title and tags"
+
+  Enum field:
+  hlp ask --schema '{"type":"object","properties":{"priority":{"type":"string","enum":["low","medium","high"]},"reason":{"type":"string"}},"required":["priority","reason"],"additionalProperties":false}' "Classify this request"`
+}
+
+func (args *AskCmd) schema() (any, error) {
+	if strings.TrimSpace(args.Schema) == "" {
+		return nil, nil
+	}
+
+	var schema any
+	if err := json.Unmarshal([]byte(args.Schema), &schema); err != nil {
+		return nil, fmt.Errorf("invalid JSON schema: %w", err)
+	}
+
+	if _, ok := schema.(map[string]any); !ok {
+		return nil, errors.New("invalid JSON schema: expected top-level object")
+	}
+
+	return schema, nil
 }
 
 func (args *AskCmd) buildContent(ctx context.Context) (string, error) {
@@ -136,6 +168,15 @@ func (args *AskCmd) init() {
 
 func (args *AskCmd) Execute(ctx context.Context, config *configpkg.Config) error {
 	args.init()
+	if args.Bash && strings.TrimSpace(args.Schema) != "" {
+		return errors.New("--schema cannot be used with --bash")
+	}
+
+	schema, err := args.schema()
+	if err != nil {
+		return err
+	}
+
 	model := args.Model
 	if model == "" {
 		model = strings.TrimSpace(config.Model())
@@ -161,6 +202,7 @@ func (args *AskCmd) Execute(ctx context.Context, config *configpkg.Config) error
 			MaxTokens:   args.MaxTokens,
 			Temperature: args.Temperature,
 			Model:       model,
+			Schema:      schema,
 		}, func(message string) error {
 			if message != "" {
 				lastMessage = message

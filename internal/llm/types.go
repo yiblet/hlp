@@ -12,6 +12,7 @@ type Input struct {
 	MaxTokens   int
 	Temperature *float32
 	Model       string
+	Schema      any
 }
 
 type Streamer interface {

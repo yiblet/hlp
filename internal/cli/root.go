@@ -2,11 +2,13 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/alexflint/go-arg"
 	configpkg "github.com/yiblet/hlp/internal/config"
+	"github.com/yiblet/hlp/internal/xerr"
 	"github.com/yiblet/hlp/internal/xio"
 )
 
@@ -52,6 +54,27 @@ func (args *MainCmd) Execute(ctx context.Context) error {
 func Run() error {
 	var args MainCmd
 	ctx := context.Background()
-	arg.MustParse(&args)
+	parser, err := arg.NewParser(arg.Config{}, &args)
+	if err != nil {
+		return err
+	}
+
+	err = parser.Parse(os.Args[1:])
+	switch {
+	case errors.Is(err, arg.ErrHelp):
+		if helpErr := xio.WriteParserHelp(parser, os.Stdout); helpErr != nil {
+			return helpErr
+		}
+		return nil
+	case err != nil:
+		if usageErr := parser.WriteUsageForSubcommand(os.Stderr, parser.SubcommandNames()...); usageErr != nil {
+			return usageErr
+		}
+		if _, writeErr := fmt.Fprintf(os.Stderr, "error: %v\n", err); writeErr != nil {
+			return writeErr
+		}
+		return xerr.TerminateSilently(err)
+	}
+
 	return args.Execute(ctx)
 }

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/alexflint/go-arg"
@@ -34,8 +35,33 @@ func TestWriteHelpAskIncludesPromptAndTemperatureHelp(t *testing.T) {
 	help := buf.String()
 	assert.Contains(t, help, "question or prompt text")
 	assert.Contains(t, help, "sampling temperature for the model response")
+	assert.Contains(t, help, "constrain the output to the provided JSON schema")
 	assert.Contains(t, help, "append file contents to the prompt")
 	assert.Contains(t, help, "send a single request and exit instead of entering follow-up mode")
+	assert.Contains(t, help, "Schema examples:")
+	assert.Contains(t, help, "Simple object:")
+	assert.Contains(t, help, "Object with array:")
+	assert.Contains(t, help, "Enum field:")
+}
+
+func TestWriteParserHelpIncludesAskSchemaExamplesForSubcommandHelp(t *testing.T) {
+	t.Parallel()
+
+	cmd := &MainCmd{}
+	parser, err := arg.NewParser(arg.Config{}, cmd)
+	require.NoError(t, err)
+
+	err = parser.Parse([]string{"ask", "--help"})
+	require.True(t, errors.Is(err, arg.ErrHelp))
+
+	var buf bytes.Buffer
+	require.NoError(t, xio.WriteParserHelp(parser, &buf))
+
+	help := buf.String()
+	assert.Contains(t, help, "Global options:")
+	assert.Contains(t, help, "Schema examples:")
+	assert.Contains(t, help, "Simple object:")
+	assert.Contains(t, help, "Enum field:")
 }
 
 func TestWriteHelpConfigIncludesSubcommandDescriptions(t *testing.T) {
